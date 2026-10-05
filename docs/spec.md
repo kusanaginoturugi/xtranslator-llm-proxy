@@ -28,7 +28,10 @@
    - `Spell Tome: <呪文名>` は `呪文の書: <呪文名の訳>` に展開する
 4. 未解決の行だけをまとめて LLM に回す（一部だけ解決した場合は `glossary+<model>`）
    - LLM 出力の行数が未解決の行数と合わなければ、部分合成をやめて全文を訳し直す
-5. **キャッシュ**: `prompt版数 + model + 未解決テキスト` をキーに、検証を通った訳だけを保存・再利用する（`cache`）
+   - 長文の振り分け: `XTRANSLATOR_LONG_MODEL` を設定し、未解決テキストが `XTRANSLATOR_LONG_MIN_CHARS`（既定 1000、空白を除く）字以上なら、長文用の上流（`XTRANSLATOR_LONG_UPSTREAM` / `_LONG_API_KEY` / `_LONG_EXTRA_BODY`）へ送る
+   - 長文用の上流が 200 以外・接続エラーを返したら（回数制限の 429 など）、ローカルのモデルで訳し直す。timeout のときは訳し直さない
+5. **キャッシュ**: `prompt版数 + model + 未解決テキスト` をキーに保存・再利用する（`cache`）。問題が残った訳も保存する（「検証と再試行」参照）
+   - 長文の振り分け先で見つからなければ、ローカルのモデルのキーでも探す（振り分けを入れる前の訳を使う）
 
 ## 翻訳メモリ・用語・例文（`lib/dictionary.rb`）
 
@@ -62,7 +65,7 @@ TranslateGemma の公式プロンプトの形を土台に、次を足した 1 �
 - `Reference translations of similar lines`: 類似例文（公式訳と作業中辞書）を `English:` / `Japanese:` の対で最大 3 件
 - 再試行時のみ: 前回の問題点
 
-`temperature=0`、`max_tokens=原文文字数×3`（64〜4096 の範囲に収める）
+`temperature=0`、`max_tokens=原文文字数×3`（64〜8192 の範囲に収める）
 
 ## 後処理（旧実装から継承）
 

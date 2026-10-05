@@ -4,6 +4,7 @@
 require "fileutils"
 require "json"
 require "net/http"
+require "openssl"
 require "socket"
 require "time"
 require "uri"
@@ -26,6 +27,17 @@ UPSTREAM_TIMEOUT = env("UPSTREAM_TIMEOUT", "30").to_f
 API_KEY = env("API_KEY", "")
 # 上流へのリクエストに足すフィールド。既定は llama.cpp / Cloudflare で思考を止める指定。Google は知らないフィールドを 400 で弾くので {} にする
 EXTRA_BODY = JSON.parse(env("EXTRA_BODY", '{"chat_template_kwargs":{"enable_thinking":false}}'))
+# 送り先。長文だけ別の上流（Gemini など）へ回せる
+Upstream = Struct.new(:uri, :api_key, :extra_body)
+DEFAULT_UPSTREAM = Upstream.new(UPSTREAM, API_KEY, EXTRA_BODY)
+# 辞書で引けなかった残りがこの文字数（空白を除く）以上なら LONG_MODEL へ。LONG_MODEL が空なら使わない
+LONG_MODEL = env("LONG_MODEL", "")
+LONG_MIN_CHARS = env("LONG_MIN_CHARS", "1000").to_i
+LONG_UPSTREAM = Upstream.new(
+  URI(env("LONG_UPSTREAM", UPSTREAM.to_s)),
+  env("LONG_API_KEY", API_KEY),
+  JSON.parse(env("LONG_EXTRA_BODY", JSON.dump(EXTRA_BODY)))
+)
 RETRIES = env("RETRIES", "1").to_i
 # xTranslator (Delphi REST) は約 20 秒で接続を切る。この秒数に収まりそうなときだけ再試行する
 CLIENT_BUDGET = env("CLIENT_BUDGET", "18").to_f
@@ -68,6 +80,10 @@ def model_for_source_text(source_text)
   return SHORT_MODEL if lines.length <= SHORT_MODEL_MAX_LINES && compact_text.length <= SHORT_MODEL_MAX_CHARS
 
   MODEL
+end
+
+def long_text?(text)
+  !LONG_MODEL.empty? && text.gsub(/\s+/, "").length >= LONG_MIN_CHARS
 end
 
 def completion_response(content, model, finish_reason = "stop")
@@ -267,21 +283,22 @@ class UpstreamError < StandardError
   end
 end
 
-def upstream_chat(model, prompt, max_tokens)
-  post = Net::HTTP::Post.new(UPSTREAM)
+def upstream_chat(model, prompt, max_tokens, upstream = DEFAULT_UPSTREAM)
+  uri = upstream.uri
+  post = Net::HTTP::Post.new(uri)
   post["Content-Type"] = "application/json"
   post["Accept"] = "application/json"
-  post["Authorization"] = "Bearer #{API_KEY}" unless API_KEY.empty?
+  post["Authorization"] = "Bearer #{upstream.api_key}" unless upstream.api_key.empty?
   post.body = JSON.dump(
     model: model,
     messages: [{ role: "user", content: prompt }],
     temperature: TEMPERATURE,
     max_tokens: max_tokens,
     stream: false,
-    **EXTRA_BODY
+    **upstream.extra_body
   )
 
-  Net::HTTP.start(UPSTREAM.host, UPSTREAM.port, use_ssl: UPSTREAM.scheme == "https") do |http|
+  Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https") do |http|
     if UPSTREAM_TIMEOUT.positive?
       # 長文は生成に時間がかかるので、最悪 25 tok/s として read timeout を延ばす
       http.open_timeout = UPSTREAM_TIMEOUT
@@ -294,7 +311,7 @@ end
 
 # LLM で訳す。問題があれば指摘付きで再試行し、問題の少ない方を採る。
 # 戻り値: [訳文, 残った問題]
-def translate_with_llm(model, text)
+def translate_with_llm(model, text, upstream = DEFAULT_UPSTREAM)
   terms = DICTIONARY.match_terms(text, limit: GLOSSARY_LIMIT)
   examples = DICTIONARY.similar_examples(text, limit: EXAMPLE_LIMIT, session_limit: SESSION_EXAMPLE_LIMIT)
   max_tokens = (text.length * 3).clamp(64, 8192)
@@ -306,7 +323,7 @@ def translate_with_llm(model, text)
     prompt = build_prompt(text, terms, examples, problems)
     log_verbose("---- upstream prompt #{model} (attempt #{attempt + 1}) ----", prompt)
 
-    response = upstream_chat(model, prompt, max_tokens)
+    response = upstream_chat(model, prompt, max_tokens, upstream)
     raise UpstreamError.new(response.code.to_i, response.body) unless response.code.to_i == 200
 
     content = JSON.parse(response.body).dig("choices", 0, "message", "content").to_s
@@ -348,15 +365,28 @@ def translate(source_text)
   pending = lines.each_index.reject { |i| resolved[i] }
   return [resolved.join("\n"), "glossary"] if pending.empty?
 
-  model = model_for_source_text(source_text)
+  local_model = model = model_for_source_text(source_text)
+  upstream = DEFAULT_UPSTREAM
   partial = pending.length < lines.count { |line| !line.strip.empty? }
   text = partial ? pending.map { |i| lines[i] }.join("\n") : source_text
+  long = long_text?(text)
+  model, upstream = LONG_MODEL, LONG_UPSTREAM if long
 
-  if (cached = CACHE[model, text])
+  # 長文用の上流を足す前にローカルで訳した分も使う
+  if (cached = CACHE[model, text] || (long && CACHE[local_model, text]))
     output = cached
     label = "cache"
   else
-    output, problems = translate_with_llm(model, text)
+    begin
+      output, problems = translate_with_llm(model, text, upstream)
+    rescue UpstreamError, SystemCallError, SocketError, OpenSSL::SSL::SSLError => e
+      raise unless long
+
+      # 回数制限 (429) などで長文用の上流が使えないときはローカルで訳す
+      warn "long upstream failed, fall back to #{local_model}: #{e.class}: #{e.message.gsub(/\s+/, " ")}"
+      model, upstream = local_model, DEFAULT_UPSTREAM
+      output, problems = translate_with_llm(model, text, upstream)
+    end
     # temperature 0 なので再実行しても同じ結果。問題が残っても保存し、xTranslator が
     # timeout で切った長文も次のリクエストで即返せるようにする
     CACHE.store(model, text, output)
@@ -373,7 +403,7 @@ def translate(source_text)
   end
 
   # 行数が合わなければ部分合成を諦めて全文を訳す
-  output, = translate_with_llm(model, source_text)
+  output, = translate_with_llm(model, source_text, upstream)
   [output, model]
 end
 
@@ -465,6 +495,7 @@ end
 server = TCPServer.new(LISTEN_HOST, LISTEN_PORT)
 warn "listening on http://#{LISTEN_HOST}:#{LISTEN_PORT}/v1/chat/completions"
 warn "upstream #{UPSTREAM} model=#{MODEL}#{SHORT_MODEL.empty? ? '' : " short=#{SHORT_MODEL}"}"
+warn "long upstream #{LONG_UPSTREAM.uri} model=#{LONG_MODEL} min_chars=#{LONG_MIN_CHARS}" unless LONG_MODEL.empty?
 warn "dictionary #{DICTIONARY_PATH} memory=#{DICTIONARY.memory_size} terms=#{DICTIONARY.term_size} examples=#{DICTIONARY.example_size} session=#{DICTIONARY.session_size} cache=#{CACHE.size}"
 warn "dump requests to #{DUMP_PATH}" unless DUMP_PATH.to_s.empty?
 
