@@ -30,6 +30,7 @@ SST 保存 ─▶ xtranslator-llm-proxy-dict.path ─▶ xtranslator_sst_glossar
 | `xtranslator` | xTranslator を日本語ロケールで起動する wine ラッパ |
 | `scripts/try.sh` / `scripts/samples.txt` | 動作確認用 |
 | `scripts/bench.sh` / `scripts/bench-*.txt` | ベンチマーク（[Benchmark](#benchmark)） |
+| `scripts/compare.rb` | `BENCH_OUT` の JSONL を原文ごとに並べた Markdown にする |
 
 ## Start
 
@@ -176,9 +177,11 @@ scripts/bench.sh
 上の Benchmark と同じ条件（辞書スナップショットなし、手動 TSV の 14 語だけ）で、同じ 55 件を
 RTX 3060 のローカル（`gemma-4-12b-it-qat-imatrix`）と Cloudflare（`@cf/google/gemma-4-26b-a4b-it`）で訳し、読み比べた。
 用語集も公式訳の類似例文も渡らない「素の訳」の比較で、実運用の質ではない。判定は Claude が目で読んだもので、再現できる採点ではない。
+全件の対訳は [`docs/quality/no-dictionary/comparison.md`](docs/quality/no-dictionary/comparison.md)（生データは同じディレクトリの JSONL）。
 
 ```sh
 BENCH_RUNS=1 BENCH_OUT=local.jsonl scripts/bench.sh scripts/bench-short.txt   # 訳を JSONL に保存
+scripts/compare.rb local.jsonl cloudflare.jsonl > comparison.md               # 並べて Markdown に
 ```
 
 100 字以内 50 件:
