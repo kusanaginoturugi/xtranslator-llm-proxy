@@ -10,6 +10,9 @@ Bethesda ゲーム（Skyrim SE など）の MOD を日本語化するための�
 
 数字は [Benchmark](#benchmark) と [Quality](#quality-辞書なし)。
 
+**動作環境: Linux 向け。Windows は未検証。** xTranslator は wine で動かし、辞書の自動更新は systemd で行う。
+Windows ではパス区切りの違いで `XTRANSLATOR_GLOSSARY_PREPEND`（`:` 区切り）が正しく読めないなど、手直しが要る見込み。
+
 xTranslator の辞書（`UserDictionaries/*.sst`）から書き出したスナップショットを使い、辞書で確定できる訳は辞書から返し、
 残りは用語集と公式訳の類似例文をプロンプトに添えて LLM に訳させる。
 
