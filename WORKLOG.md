@@ -8,8 +8,11 @@ Record:
 - 本体: `xtranslator-llm-proxy.rb`。ユニット: `xtranslator-llm-proxy.service` / `xtranslator-llm-proxy-dict.{path,service}`。
 - データ: `~/.local/share/xtranslator-llm-proxy/`（辞書スナップショット・作業中辞書）、`~/.cache/xtranslator-llm-proxy/`（訳キャッシュ）。旧パスへのフォールバックはない。
 - 環境変数（`XTRANSLATOR_*`）とポート（8091）は変えていない。
-- 以下のエントリは当時の名前のまま残している。
 - README に ollama で使う場合の節を足した（上流と model 名の差し替え、`num_ctx` と keep-alive の設定）。ollama での動作は未検証。
+- ベンチマークを追加した（`scripts/bench.sh`）。RTX 3060 と Cloudflare Workers AI（`@cf/google/gemma-4-26b-a4b-it`）の結果を README に載せた。RTX 4070 は未計測。
+- `models.ini` の `reasoning = on` で gemma-4 が思考してしまい、訳が空や遅延になっていた。上流へのリクエストに `chat_template_kwargs: {enable_thinking: false}` を付けた（Cloudflare でも有効）。
+- 上流の https と `XTRANSLATOR_API_KEY`（Bearer）に対応した。
+- 以下のエントリは当時の名前のまま残している。
 
 Handoff（サービスを動かしている自宅機での移行手順。未実施）:
 
@@ -41,6 +44,7 @@ journalctl --user -u xtranslator-llm-proxy -f -o cat
 
 - 確認: xTranslator から 1 件訳して、ログに出ること、`~/.cache/xtranslator-llm-proxy/translations.jsonl` に追記されること。
 - xTranslator 側の設定（`127.0.0.1:8091`）は変更不要。
+- 自宅機（RTX 4070）: pull 後に `systemctl --user restart xtranslator-llm-proxy`（思考無効化の反映）。`scripts/bench.sh` と `BENCH_RUNS=1 BENCH_SUMMARY=1 scripts/bench.sh scripts/bench-short.txt` を流して README の 4070 列を埋める。
 
 ## 2026-10-01 実運用ログの分析と検証の改善
 

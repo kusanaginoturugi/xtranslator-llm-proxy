@@ -144,24 +144,32 @@ BENCH_RUNS=1 BENCH_SUMMARY=1 scripts/bench.sh scripts/bench-short.txt   # 100 �
 
 条件: `gemma-4-12b-it-qat-imatrix`（`gemma-4-12B-it-qat-ja-Q4_K_M.gguf`）、`c = 32768`、`parallel = 1`、
 MTP の投機的デコード（`spec-type = draft-mtp`）、思考なし。llama.cpp b11223。
+Cloudflare は Workers AI の `@cf/google/gemma-4-26b-a4b-it`（モデルが違う）。ばらつきが大きく、2748 字は 3 回中 8.3〜22.6 秒で、20 秒を超えることがある。
+
+```sh
+XTRANSLATOR_UPSTREAM=https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/ai/v1/chat/completions \
+XTRANSLATOR_MODEL=@cf/google/gemma-4-26b-a4b-it \
+XTRANSLATOR_API_KEY=$(cat ~/.config/cloudflare-ai-token) \
+scripts/bench.sh
+```
 
 長さ別（中央値、秒）。xTranslator は約 20 秒で切断する。
 
 | 文字数 | RTX 3060 12GB | RTX 4070 | Cloudflare |
 | ---: | ---: | ---: | ---: |
-| 65 | 0.5 | | |
-| 117 | 0.9 | | |
-| 376 | 2.5 | | |
-| 1350 | 8.3 | | |
-| 2748 | 14.2 | | |
+| 65 | 0.5 | | 0.9 |
+| 117 | 0.9 | | 1.9 |
+| 376 | 2.5 | | 2.3 |
+| 1350 | 8.3 | | 4.3 |
+| 2748 | 14.2 | | 19.1 |
 
 100 字以内 50 件（`scripts/bench-short.txt`）。
 
 | | RTX 3060 12GB | RTX 4070 | Cloudflare |
 | --- | ---: | ---: | ---: |
-| 合計（秒） | 30.5 | | |
-| 中央値 / 最大（秒） | 0.6 / 0.8 | | |
-| 問題あり | 0 | | |
+| 合計（秒） | 30.5 | | 52.8 |
+| 中央値 / 最大（秒） | 0.6 / 0.8 | | 1.0 / 4.2 |
+| 問題あり | 0 | | 0 |
 
 ## Environment
 
