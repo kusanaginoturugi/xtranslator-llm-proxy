@@ -24,6 +24,8 @@ SHORT_MODEL_MAX_CHARS = env("SHORT_MODEL_MAX_CHARS", "160").to_i
 TEMPERATURE = env("TEMPERATURE", "0").to_f
 UPSTREAM_TIMEOUT = env("UPSTREAM_TIMEOUT", "30").to_f
 API_KEY = env("API_KEY", "")
+# 上流へのリクエストに足すフィールド。既定は llama.cpp / Cloudflare で思考を止める指定。Google は知らないフィールドを 400 で弾くので {} にする
+EXTRA_BODY = JSON.parse(env("EXTRA_BODY", '{"chat_template_kwargs":{"enable_thinking":false}}'))
 RETRIES = env("RETRIES", "1").to_i
 # xTranslator (Delphi REST) は約 20 秒で接続を切る。この秒数に収まりそうなときだけ再試行する
 CLIENT_BUDGET = env("CLIENT_BUDGET", "18").to_f
@@ -276,8 +278,7 @@ def upstream_chat(model, prompt, max_tokens)
     temperature: TEMPERATURE,
     max_tokens: max_tokens,
     stream: false,
-    # models.ini で reasoning = on のモデルでも、翻訳では思考させない
-    chat_template_kwargs: { enable_thinking: false }
+    **EXTRA_BODY
   )
 
   Net::HTTP.start(UPSTREAM.host, UPSTREAM.port, use_ssl: UPSTREAM.scheme == "https") do |http|
