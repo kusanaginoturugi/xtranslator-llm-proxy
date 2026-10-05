@@ -5,6 +5,7 @@
 #   BENCH_RUNS=3        1 サンプルあたりの回数（中央値を採る）
 #   BENCH_SUMMARY=1     サンプルごとではなく、全体を 1 行に集計する
 #   BENCH_DICTIONARY=1  辞書スナップショットを使う（既定は使わない。機材間で比べるため）
+#   BENCH_OUT=PATH      訳を JSONL で追記する（source / translation / label / model）
 cd "$(dirname "$0")/.." || exit 1
 samples=${1:-scripts/bench-samples.txt}
 port=${2:-8092}
@@ -64,6 +65,10 @@ while IFS= read -r line; do
     n=$((n + 1))
   done
   label=$(ruby -rjson -e 'puts JSON.parse(File.read(ARGV[0]))["model"] rescue puts "error"' "$tmp/out.json")
+  [ -n "$BENCH_OUT" ] && ruby -rjson -e '
+    j = JSON.parse(File.read(ARGV[0])) rescue {}
+    File.open(ARGV[3], "a") { |f| f.puts JSON.dump(source: ARGV[1], translation: j.dig("choices", 0, "message", "content"), label: j["model"], model: ARGV[2]) }' \
+    "$tmp/out.json" "$line" "$model" "$BENCH_OUT"
   sort -n "$tmp/times" | awk -v chars="${#line}" -v label="$label" '
     { t[NR] = $1 }
     END { printf "%d %.2f %.2f %.2f %s\n", chars, t[int((NR + 1) / 2)], t[1], t[NR], label }'
