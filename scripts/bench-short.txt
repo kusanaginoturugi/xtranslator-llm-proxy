@@ -1,0 +1,50 @@
+The Jarl of Whiterun wants a word with you about the dragon sighting.
+Take this soul gem to the College of Winterhold and ask for Tolfdir.
+Ulfric Stormcloak will not forget what you did at Windhelm.
+A Thalmor patrol was seen on the road to Solitude this morning.
+Bring me five skeever tails and I'll show you a trick with poisons.
+The draugr in Bleak Falls Barrow guard something older than the Nords.
+Brynjolf says the Thieves Guild could use someone with quick hands.
+Lydia will carry your burdens, my Thane.
+You smell like a Khajiit caravan after a long march.
+The Companions of Jorrvaskr do not take just anyone.
+I used to be an adventurer like you, until the Stormcloaks burned my farm.
+Arngeir asks that you return to High Hrothgar when you are ready.
+This ebony dagger once belonged to a Dark Brotherhood assassin.
+Speak with Delphine at the Sleeping Giant Inn in Riverwood.
+The mine in Markarth is closed until the Silver-Bloods say otherwise.
+General Tullius needs a courier who can reach Falkreath before dawn.
+Have you heard? The Dragonborn has returned to Skyrim.
+Sheogorath sends his regards, and also a cheese wheel.
+Targets within <mag> feet are frozen in place for <dur> seconds.
+<Alias=Player>, the Greybeards are calling for you.
+Meet me behind the Bee and Barb once the Riften guards change shifts.
+Our Dwemer scholar believes the lexicon still holds a message.
+An Argonian merchant in Windhelm is selling stolen Imperial armor.
+Aela wants you to hunt the beast that has been killing cattle near Rorikstead.
+The Falmer have taken over the lower halls of Blackreach.
+Belethor will buy anything, as long as you don't ask where he sells it.
+Pray to Mara if you seek a companion for the long winters.
+The Imperial Legion pays well for every Stormcloak camp you clear.
+A Word Wall stands on the peak above Dawnstar, if you can survive the climb.
+Mercer Frey has emptied the vault. The Guild is ruined.
+Savos Aren has asked you to recover the Staff of Magnus.
+Fus Ro Dah! The ancient words still shake the mountain.
+The Dunmer of Gray Quarter are treated like beggars in their own city.
+Cicero keeps talking to the Night Mother when he thinks no one is listening.
+Use the Dwarven mechanism to open the gate to the inner sanctum.
+Esbern believes Alduin can be defeated with the right Shout.
+Increases your one-handed weapon damage by <mag>% for <dur> seconds.
+My brother joined the Thalmor, and now he won't even look at me.
+Paarthurnax waits at the Throat of the World. Go and learn from him.
+Nazeem asks again if you've ever been to the Cloud District.
+The Elder Scroll you carry is heavier than any stone, they say.
+Bring the Dragonstone to Farengar, and be careful with it.
+The wolves near Helgen have been bolder since the attack.
+Vilkas and Farkas are arguing over who will lead the next hunt.
+Azura's shrine lies to the south of Winterhold, high in the mountains.
+Ancano is not to be trusted. The Psijic Order warned us.
+A Bosmer bard in Falkreath is singing about your deeds already.
+Clear out the bandits at Valtheim Towers and the Jarl will reward you.
+This enchanted ring adds <mag> points to your Magicka.
+Sovngarde awaits the brave, but not today, my friend.

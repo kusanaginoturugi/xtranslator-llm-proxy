@@ -29,6 +29,7 @@ SST 保存 ─▶ xtranslator-llm-proxy-dict.path ─▶ xtranslator_sst_glossar
 | `xtranslator-glossary.local.tsv` | 手動の上書き辞書（スナップショットより優先） |
 | `xtranslator` | xTranslator を日本語ロケールで起動する wine ラッパ |
 | `scripts/try.sh` / `scripts/samples.txt` | 動作確認用 |
+| `scripts/bench.sh` / `scripts/bench-*.txt` | ベンチマーク（[Benchmark](#benchmark)） |
 
 ## Start
 
@@ -130,6 +131,38 @@ SST を保存するのは mod を訳し終えてからが多いので、それ�
 scripts/try.sh 8091 < scripts/samples.txt
 ```
 
+## Benchmark
+
+`scripts/bench.sh` は計測用のプロキシを 8092 番で別に起動して、応答時間を測る。
+キャッシュ・作業中辞書・再試行・辞書スナップショットは切るので、機材の差だけが出る（手動 TSV の 14 語だけ使う）。
+モデルのロード時間は含まない。
+
+```sh
+scripts/bench.sh                                                    # 長さ別 5 件 × 3 回
+BENCH_RUNS=1 BENCH_SUMMARY=1 scripts/bench.sh scripts/bench-short.txt   # 100 字以内 50 件
+```
+
+条件: `gemma-4-12b-it-qat-imatrix`（`gemma-4-12B-it-qat-ja-Q4_K_M.gguf`）、`c = 32768`、`parallel = 1`、
+MTP の投機的デコード（`spec-type = draft-mtp`）、思考なし。llama.cpp b11223。
+
+長さ別（中央値、秒）。xTranslator は約 20 秒で切断する。
+
+| 文字数 | RTX 3060 12GB | RTX 4070 | Cloudflare |
+| ---: | ---: | ---: | ---: |
+| 65 | 0.5 | | |
+| 117 | 0.9 | | |
+| 376 | 2.5 | | |
+| 1350 | 8.3 | | |
+| 2748 | 14.2 | | |
+
+100 字以内 50 件（`scripts/bench-short.txt`）。
+
+| | RTX 3060 12GB | RTX 4070 | Cloudflare |
+| --- | ---: | ---: | ---: |
+| 合計（秒） | 30.5 | | |
+| 中央値 / 最大（秒） | 0.6 / 0.8 | | |
+| 問題あり | 0 | | |
+
 ## Environment
 
 | 変数 | 既定値 | |
@@ -140,6 +173,7 @@ scripts/try.sh 8091 < scripts/samples.txt
 | `XTRANSLATOR_SHORT_MODEL` | 空 | 設定すると短文だけこのモデルへ。`--models-max 1` だと載せ替えが頻発するので非推奨 |
 | `XTRANSLATOR_TEMPERATURE` | `0` | |
 | `XTRANSLATOR_UPSTREAM_TIMEOUT` | `30` | 秒。read timeout は `これ + max_tokens/25` 秒。超えたら原文をそのまま返す |
+| `XTRANSLATOR_API_KEY` | 空 | 設定すると上流に `Authorization: Bearer` で送る（Cloudflare など） |
 | `XTRANSLATOR_RETRIES` | `1` | 検証 NG 時の再試行回数 |
 | `XTRANSLATOR_CLIENT_BUDGET` | `18` | 秒。再試行してもこの時間に収まりそうなときだけ再試行する（xTranslator は約 20 秒で切断する） |
 | `XTRANSLATOR_GLOSSARY_LIMIT` | `40` | プロンプトに入れる用語の上限 |
