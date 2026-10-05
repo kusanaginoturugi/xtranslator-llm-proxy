@@ -273,7 +273,9 @@ def upstream_chat(model, prompt, max_tokens)
     messages: [{ role: "user", content: prompt }],
     temperature: TEMPERATURE,
     max_tokens: max_tokens,
-    stream: false
+    stream: false,
+    # models.ini で reasoning = on のモデルでも、翻訳では思考させない
+    chat_template_kwargs: { enable_thinking: false }
   )
 
   Net::HTTP.start(UPSTREAM.host, UPSTREAM.port) do |http|
