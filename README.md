@@ -293,3 +293,7 @@ ollama 側で次の 2 つを設定しておく。
 - プロンプトや既定モデルを変えて過去訳を捨てたいとき: `rm ~/.cache/xtranslator-llm-proxy/translations.jsonl`
 - `Misc/ApiTranslator.txt` を変えたら: xTranslator 再起動
 - `/etc/llama.cpp/models.ini` を変えたら: llama.cpp 再起動
+
+## License
+
+MIT（[`LICENSE`](LICENSE)）。
