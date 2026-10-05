@@ -23,6 +23,7 @@ SHORT_MODEL_MAX_LINES = env("SHORT_MODEL_MAX_LINES", "2").to_i
 SHORT_MODEL_MAX_CHARS = env("SHORT_MODEL_MAX_CHARS", "160").to_i
 TEMPERATURE = env("TEMPERATURE", "0").to_f
 UPSTREAM_TIMEOUT = env("UPSTREAM_TIMEOUT", "30").to_f
+API_KEY = env("API_KEY", "")
 RETRIES = env("RETRIES", "1").to_i
 # xTranslator (Delphi REST) は約 20 秒で接続を切る。この秒数に収まりそうなときだけ再試行する
 CLIENT_BUDGET = env("CLIENT_BUDGET", "18").to_f
@@ -268,6 +269,7 @@ def upstream_chat(model, prompt, max_tokens)
   post = Net::HTTP::Post.new(UPSTREAM)
   post["Content-Type"] = "application/json"
   post["Accept"] = "application/json"
+  post["Authorization"] = "Bearer #{API_KEY}" unless API_KEY.empty?
   post.body = JSON.dump(
     model: model,
     messages: [{ role: "user", content: prompt }],
@@ -278,7 +280,7 @@ def upstream_chat(model, prompt, max_tokens)
     chat_template_kwargs: { enable_thinking: false }
   )
 
-  Net::HTTP.start(UPSTREAM.host, UPSTREAM.port) do |http|
+  Net::HTTP.start(UPSTREAM.host, UPSTREAM.port, use_ssl: UPSTREAM.scheme == "https") do |http|
     if UPSTREAM_TIMEOUT.positive?
       # 長文は生成に時間がかかるので、最悪 25 tok/s として read timeout を延ばす
       http.open_timeout = UPSTREAM_TIMEOUT
