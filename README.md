@@ -146,6 +146,8 @@ BENCH_RUNS=1 BENCH_SUMMARY=1 scripts/bench.sh scripts/bench-short.txt   # 100 �
 条件: `gemma-4-12b-it-qat-imatrix`（`gemma-4-12B-it-qat-ja-Q4_K_M.gguf`）、`c = 32768`、`parallel = 1`、
 MTP の投機的デコード（`spec-type = draft-mtp`）、思考なし。llama.cpp b11223。
 Cloudflare は Workers AI の `@cf/google/gemma-4-26b-a4b-it`（モデルが違う）。ばらつきが大きく、2748 字は 3 回中 8.3〜22.6 秒で、20 秒を超えることがある。
+Gemini 3.5 Flash-Lite は Google AI Studio の OpenAI 互換 API（`XTRANSLATOR_EXTRA_BODY={}`）。何も指定しなくても思考せずに返る。
+AI Studio の `gemma-4-26b-a4b-it` は思考を止める指定がどれも 400 になり、本文に `<thought>` を出してから訳すので、短い 1 文でも 12〜20 秒かかる。xTranslator では使えないので測っていない。
 
 ```sh
 XTRANSLATOR_UPSTREAM=https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/ai/v1/chat/completions \
@@ -156,40 +158,40 @@ scripts/bench.sh
 
 長さ別（中央値、秒）。xTranslator は約 20 秒で切断する。
 
-| 文字数 | RTX 3060 12GB | RTX 4070 | Cloudflare |
-| ---: | ---: | ---: | ---: |
-| 65 | 0.5 | | 0.9 |
-| 117 | 0.9 | | 1.9 |
-| 376 | 2.5 | | 2.3 |
-| 1350 | 8.3 | | 4.3 |
-| 2748 | 14.2 | | 19.1 |
+| 文字数 | RTX 3060 12GB | RTX 4070 | Cloudflare | Gemini 3.5 Flash-Lite |
+| ---: | ---: | ---: | ---: | ---: |
+| 65 | 0.5 | | 0.9 | 1.4 |
+| 117 | 0.9 | | 1.9 | 1.2 |
+| 376 | 2.5 | | 2.3 | 1.6 |
+| 1350 | 8.3 | | 4.3 | 3.0 |
+| 2748 | 14.2 | | 19.1 | 4.0 |
 
 100 字以内 50 件（`scripts/bench-short.txt`）。
 
-| | RTX 3060 12GB | RTX 4070 | Cloudflare |
-| --- | ---: | ---: | ---: |
-| 合計（秒） | 30.5 | | 52.8 |
-| 中央値 / 最大（秒） | 0.6 / 0.8 | | 1.0 / 4.2 |
-| 問題あり | 0 | | 0 |
+| | RTX 3060 12GB | RTX 4070 | Cloudflare | Gemini 3.5 Flash-Lite |
+| --- | ---: | ---: | ---: | ---: |
+| 合計（秒） | 30.5 | | 52.8 | 61.1 |
+| 中央値 / 最大（秒） | 0.6 / 0.8 | | 1.0 / 4.2 | 1.2 / 1.5 |
+| 問題あり | 0 | | 0 | 0 |
 
 ## Quality (辞書なし)
 
 上の Benchmark と同じ条件（辞書スナップショットなし、手動 TSV の 14 語だけ）で、同じ 55 件を
-RTX 3060 のローカル（`gemma-4-12b-it-qat-imatrix`）と Cloudflare（`@cf/google/gemma-4-26b-a4b-it`）で訳し、読み比べた。
+RTX 3060 のローカル（`gemma-4-12b-it-qat-imatrix`）、Cloudflare（`@cf/google/gemma-4-26b-a4b-it`）、Google AI Studio（`gemini-3.5-flash-lite`）で訳し、読み比べた。
 用語集も公式訳の類似例文も渡らない「素の訳」の比較で、実運用の質ではない。判定は Claude が目で読んだもので、再現できる採点ではない。
 全件の対訳は [`docs/quality/no-dictionary/comparison.md`](docs/quality/no-dictionary/comparison.md)（生データは同じディレクトリの JSONL）。
 
 ```sh
 BENCH_RUNS=1 BENCH_OUT=local.jsonl scripts/bench.sh scripts/bench-short.txt   # 訳を JSONL に保存
-scripts/compare.rb local.jsonl cloudflare.jsonl > comparison.md               # 並べて Markdown に
+scripts/compare.rb local.jsonl cloudflare.jsonl google.jsonl > comparison.md  # 並べて Markdown に
 ```
 
 100 字以内 50 件:
 
-| | ローカル | Cloudflare |
-| --- | ---: | ---: |
-| 意味が壊れた / 内容を足した / 他の文字が混ざった | 0 | 4 |
-| 固有名詞が公式訳どおり（確認できた 9 か所） | 2 | 3 |
+| | ローカル | Cloudflare | Gemini 3.5 Flash-Lite |
+| --- | ---: | ---: | ---: |
+| 意味が壊れた / 内容を足した / 他の文字が混ざった | 0 | 4 | 3 |
+| 固有名詞が公式訳どおり（確認できた 9 か所） | 2 | 3 | 8 |
 
 - Cloudflare の例:
   - `My brother joined the Thalmor` → 「タロスを信じる者を弾圧するサマート・ド・タロスに加わり」（内容を足した）
@@ -197,14 +199,20 @@ scripts/compare.rb local.jsonl cloudflare.jsonl > comparison.md               # 
   - `Belethor will buy anything, as long as you don't ask where he sells it.` → 「何でも買い取るが、どこで売っているのかを聞かない限り。」（文が壊れた）
   - `This ebony dagger once belonged to …` → 「〜エボニーダガー」（文が終わっていない）
   - `Ulfric` → 「ウルフレリック」
+- Gemini 3.5 Flash-Lite の例:
+  - `I used to be an adventurer like you, …` → 「お前も昔は冒険者だったが、…」（意味が逆）
+  - `… the Jarl will reward you.` → 「Jarlから報酬がもらえる。」（英語が残った。プロキシの検証は小文字始まりの語だけを見ているので通った）
+  - `Cicero keeps talking to the Night Mother …` → 「夜母語りかけている」（助詞が抜けた）
+  - `Solitude` → 「ソリュディュード」
 - ローカルの例: 意味が壊れた訳はなかった
-- 両方: `my Thane` を「領主様」「従者殿」と誤訳（公式訳は「従士」のはず。要確認）
+- ローカルと Cloudflare: `my Thane` を「領主様」「従者殿」と誤訳（公式訳は「従士」のはず。要確認）。Flash-Lite は「従士」
 
-長さ別 5 件（65〜2748 字）は、どちらも意味の通る訳だった。長文は Cloudflare の方がやや自然。
+長さ別 5 件（65〜2748 字）は、3 つとも意味の通る訳だった。長文は Cloudflare と Flash-Lite の方がやや自然。
 ローカルは `lose its charge` を「電荷を失う」、Cloudflare は `the Jarl's steward` の Jarl を落とした。
 
-まとめ: 文の崩れはローカルの方が少ない。固有名詞はどちらも公式訳をほとんど知らない（[固有名詞の分析](docs/quality/no-dictionary/proper-nouns.md)）。
-長文は同程度。モデルの大きさが違う（12B と 26B の MoE）ことに注意。
+まとめ: 文の崩れはローカルが一番少ない。固有名詞はローカルと Cloudflare は公式訳をほとんど知らず、Flash-Lite はよく知っている
+（[固有名詞の分析](docs/quality/no-dictionary/proper-nouns.md)）。長文の速さと安定は Flash-Lite が一番。
+モデルが違う（ローカル 12B、Cloudflare 26B の MoE、Flash-Lite は非公開）ことに注意。
 
 ## Environment
 
@@ -217,6 +225,7 @@ scripts/compare.rb local.jsonl cloudflare.jsonl > comparison.md               # 
 | `XTRANSLATOR_TEMPERATURE` | `0` | |
 | `XTRANSLATOR_UPSTREAM_TIMEOUT` | `30` | 秒。read timeout は `これ + max_tokens/25` 秒。超えたら原文をそのまま返す |
 | `XTRANSLATOR_API_KEY` | 空 | 設定すると上流に `Authorization: Bearer` で送る（Cloudflare など） |
+| `XTRANSLATOR_EXTRA_BODY` | `{"chat_template_kwargs":{"enable_thinking":false}}` | 上流へのリクエストに足す JSON。思考を止める指定。Google は知らないフィールドを 400 で弾くので `{}` にする |
 | `XTRANSLATOR_RETRIES` | `1` | 検証 NG 時の再試行回数 |
 | `XTRANSLATOR_CLIENT_BUDGET` | `18` | 秒。再試行してもこの時間に収まりそうなときだけ再試行する（xTranslator は約 20 秒で切断する） |
 | `XTRANSLATOR_GLOSSARY_LIMIT` | `40` | プロンプトに入れる用語の上限 |

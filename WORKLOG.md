@@ -14,7 +14,10 @@ Record:
 - 上流の https と `XTRANSLATOR_API_KEY`（Bearer）に対応した。
 - 辞書なしで訳の質を比べた（README の Quality 節）。短文はローカルが安定、Cloudflare は 50 件中 4 件で意味崩れ・内容の追加・タイ文字混入。辞書ありの比較は、自宅機の `dictionary.jsonl` をこのマシンにコピーしてから `BENCH_DICTIONARY=1` でやる（未実施）。
 - 辞書なしの固有名詞を公式訳（日本語版 Wikipedia で確認できた 9 か所）と照合した（`docs/quality/no-dictionary/proper-nouns.md`）。公式訳どおりはローカル 2、Cloudflare 3。どちらも公式訳はほぼ知らず、音写どおりの名前だけ当たる。
+- Google AI Studio を比較に足した。`gemini-3.5-flash-lite` は長文が速く安定（2748 字で 4.0 秒）、固有名詞は 9 か所中 8 か所が公式訳どおり。AI Studio の `gemma-4-26b-a4b-it` は思考を止められず（1 文で 12〜20 秒）測っていない。
+- Google の API が `chat_template_kwargs` を 400 で弾くため、上流に足すフィールドを `XTRANSLATOR_EXTRA_BODY`（JSON）で変えられるようにした。既定は従来どおり。
 - 未対応: プロキシの検証がラテン文字以外の外国文字（タイ文字など）の混入を検出しない。
+- 未対応: 検証は小文字始まりのラテン文字の単語しか見ないので、Flash-Lite が残した「Jarl」は通った。
 - 以下のエントリは当時の名前のまま残している。
 
 Handoff（サービスを動かしている自宅機での移行手順。未実施）:
