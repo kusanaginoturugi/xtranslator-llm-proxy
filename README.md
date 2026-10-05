@@ -189,21 +189,22 @@ scripts/compare.rb local.jsonl cloudflare.jsonl > comparison.md               # 
 | | ローカル | Cloudflare |
 | --- | ---: | ---: |
 | 意味が壊れた / 内容を足した / 他の文字が混ざった | 0 | 4 |
-| 固有名詞の誤り（表記揺れは数えない） | 1 | 2 |
+| 固有名詞が公式訳どおり（確認できた 9 か所） | 2 | 3 |
 
 - Cloudflare の例:
   - `My brother joined the Thalmor` → 「タロスを信じる者を弾圧するサマート・ド・タロスに加わり」（内容を足した）
   - `Falkreath` → 「ファルクリーธ」（タイ文字が混ざった。プロキシの検証はラテン文字の混入しか見ていないので通った）
   - `Belethor will buy anything, as long as you don't ask where he sells it.` → 「何でも買い取るが、どこで売っているのかを聞かない限り。」（文が壊れた）
   - `This ebony dagger once belonged to …` → 「〜エボニーダガー」（文が終わっていない）
-  - `Thalmor` → 「サマール」、`Ulfric` → 「ウルフレリック」
-- ローカルの例: `Dark Brotherhood` → 「暗殺者ギルド」
-- 両方: `my Thane` を「領主様」「従者殿」と誤訳（正しくは従士）
+  - `Ulfric` → 「ウルフレリック」
+- ローカルの例: 意味が壊れた訳はなかった
+- 両方: `my Thane` を「領主様」「従者殿」と誤訳（公式訳は「従士」のはず。要確認）
 
 長さ別 5 件（65〜2748 字）は、どちらも意味の通る訳だった。長文は Cloudflare の方がやや自然。
 ローカルは `lose its charge` を「電荷を失う」、Cloudflare は `the Jarl's steward` の Jarl を落とした。
 
-まとめ: 短文はローカルの方が安定している。長文は同程度。モデルの大きさが違う（12B と 26B の MoE）ことに注意。
+まとめ: 文の崩れはローカルの方が少ない。固有名詞はどちらも公式訳をほとんど知らない（[固有名詞の分析](docs/quality/no-dictionary/proper-nouns.md)）。
+長文は同程度。モデルの大きさが違う（12B と 26B の MoE）ことに注意。
 
 ## Environment
 
