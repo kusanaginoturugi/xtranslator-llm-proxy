@@ -9,6 +9,7 @@ Record:
 - データ: `~/.local/share/xtranslator-llm-proxy/`（辞書スナップショット・作業中辞書）、`~/.cache/xtranslator-llm-proxy/`（訳キャッシュ）。旧パスへのフォールバックはない。
 - 環境変数（`XTRANSLATOR_*`）とポート（8091）は変えていない。
 - 以下のエントリは当時の名前のまま残している。
+- README に ollama で使う場合の節を足した（上流と model 名の差し替え、`num_ctx` と keep-alive の設定）。ollama での動作は未検証。
 
 Handoff（サービスを動かしている自宅機での移行手順。未実施）:
 
