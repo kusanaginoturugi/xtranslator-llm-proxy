@@ -171,6 +171,37 @@ scripts/bench.sh
 | 中央値 / 最大（秒） | 0.6 / 0.8 | | 1.0 / 4.2 |
 | 問題あり | 0 | | 0 |
 
+## Quality (辞書なし)
+
+上の Benchmark と同じ条件（辞書スナップショットなし、手動 TSV の 14 語だけ）で、同じ 55 件を
+RTX 3060 のローカル（`gemma-4-12b-it-qat-imatrix`）と Cloudflare（`@cf/google/gemma-4-26b-a4b-it`）で訳し、読み比べた。
+用語集も公式訳の類似例文も渡らない「素の訳」の比較で、実運用の質ではない。判定は Claude が目で読んだもので、再現できる採点ではない。
+
+```sh
+BENCH_RUNS=1 BENCH_OUT=local.jsonl scripts/bench.sh scripts/bench-short.txt   # 訳を JSONL に保存
+```
+
+100 字以内 50 件:
+
+| | ローカル | Cloudflare |
+| --- | ---: | ---: |
+| 意味が壊れた / 内容を足した / 他の文字が混ざった | 0 | 4 |
+| 固有名詞の誤り（表記揺れは数えない） | 1 | 2 |
+
+- Cloudflare の例:
+  - `My brother joined the Thalmor` → 「タロスを信じる者を弾圧するサマート・ド・タロスに加わり」（内容を足した）
+  - `Falkreath` → 「ファルクリーธ」（タイ文字が混ざった。プロキシの検証はラテン文字の混入しか見ていないので通った）
+  - `Belethor will buy anything, as long as you don't ask where he sells it.` → 「何でも買い取るが、どこで売っているのかを聞かない限り。」（文が壊れた）
+  - `This ebony dagger once belonged to …` → 「〜エボニーダガー」（文が終わっていない）
+  - `Thalmor` → 「サマール」、`Ulfric` → 「ウルフレリック」
+- ローカルの例: `Dark Brotherhood` → 「暗殺者ギルド」
+- 両方: `my Thane` を「領主様」「従者殿」と誤訳（正しくは従士）
+
+長さ別 5 件（65〜2748 字）は、どちらも意味の通る訳だった。長文は Cloudflare の方がやや自然。
+ローカルは `lose its charge` を「電荷を失う」、Cloudflare は `the Jarl's steward` の Jarl を落とした。
+
+まとめ: 短文はローカルの方が安定している。長文は同程度。モデルの大きさが違う（12B と 26B の MoE）ことに注意。
+
 ## Environment
 
 | 変数 | 既定値 | |

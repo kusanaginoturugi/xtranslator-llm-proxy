@@ -12,6 +12,8 @@ Record:
 - ベンチマークを追加した（`scripts/bench.sh`）。RTX 3060 と Cloudflare Workers AI（`@cf/google/gemma-4-26b-a4b-it`）の結果を README に載せた。RTX 4070 は未計測。
 - `models.ini` の `reasoning = on` で gemma-4 が思考してしまい、訳が空や遅延になっていた。上流へのリクエストに `chat_template_kwargs: {enable_thinking: false}` を付けた（Cloudflare でも有効）。
 - 上流の https と `XTRANSLATOR_API_KEY`（Bearer）に対応した。
+- 辞書なしで訳の質を比べた（README の Quality 節）。短文はローカルが安定、Cloudflare は 50 件中 4 件で意味崩れ・内容の追加・タイ文字混入。辞書ありの比較は、自宅機の `dictionary.jsonl` をこのマシンにコピーしてから `BENCH_DICTIONARY=1` でやる（未実施）。
+- 未対応: プロキシの検証がラテン文字以外の外国文字（タイ文字など）の混入を検出しない。
 - 以下のエントリは当時の名前のまま残している。
 
 Handoff（サービスを動かしている自宅機での移行手順。未実施）:
