@@ -24,7 +24,7 @@ options = {
 
 DEFAULT_OUTPUT = {
   "tsv" => "/tmp/xtranslator-glossary.tsv",
-  "jsonl" => File.expand_path("~/.local/share/llama-openai-proxy/dictionary.jsonl")
+  "jsonl" => File.expand_path("~/.local/share/xtranslator-llm-proxy/dictionary.jsonl")
 }.freeze
 
 OptionParser.new do |o|

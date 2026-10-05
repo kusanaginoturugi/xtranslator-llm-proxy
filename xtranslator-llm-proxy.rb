@@ -28,14 +28,14 @@ RETRIES = env("RETRIES", "1").to_i
 CLIENT_BUDGET = env("CLIENT_BUDGET", "18").to_f
 WARMUP = env("WARMUP", "1") != "0"
 
-DICTIONARY_PATH = File.expand_path(env("DICTIONARY", "~/.local/share/llama-openai-proxy/dictionary.jsonl"))
-SESSION_PATH = env("SESSION", File.expand_path("~/.local/share/llama-openai-proxy/session.jsonl"))
+DICTIONARY_PATH = File.expand_path(env("DICTIONARY", "~/.local/share/xtranslator-llm-proxy/dictionary.jsonl"))
+SESSION_PATH = env("SESSION", File.expand_path("~/.local/share/xtranslator-llm-proxy/session.jsonl"))
 GAME_TITLE = env("GAME_TITLE", "The Elder Scrolls V: Skyrim")
 GLOSSARY_PREPEND = env("GLOSSARY_PREPEND", File.join(__dir__, "xtranslator-glossary.local.tsv"))
 GLOSSARY_LIMIT = env("GLOSSARY_LIMIT", "40").to_i
 EXAMPLE_LIMIT = env("EXAMPLE_LIMIT", "3").to_i
 SESSION_EXAMPLE_LIMIT = env("SESSION_EXAMPLE_LIMIT", "2").to_i
-CACHE_PATH = env("CACHE", File.expand_path("~/.cache/llama-openai-proxy/translations.jsonl"))
+CACHE_PATH = env("CACHE", File.expand_path("~/.cache/xtranslator-llm-proxy/translations.jsonl"))
 PROMPT_VERSION = "3"
 
 DICTIONARY = Dictionary.new(

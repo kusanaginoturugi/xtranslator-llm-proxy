@@ -3,7 +3,7 @@ Description=xTranslator の SST から翻訳プロキシ用の辞書スナップ
 
 [Service]
 Type=oneshot
-WorkingDirectory=%h/src/llama-openai-proxy
+WorkingDirectory=%h/src/xtranslator-llm-proxy
 # xTranslator の保存が終わるのを少し待つ
 ExecStartPre=/usr/bin/sleep 2
-ExecStart=/usr/bin/ruby %h/src/llama-openai-proxy/xtranslator_sst_glossary.rb --format jsonl
+ExecStart=/usr/bin/ruby %h/src/xtranslator-llm-proxy/xtranslator_sst_glossary.rb --format jsonl

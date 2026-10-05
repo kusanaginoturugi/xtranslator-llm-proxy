@@ -1,5 +1,46 @@
 # Work Log
 
+## 2026-10-05 名前を xtranslator-llm-proxy に変更
+
+Record:
+
+- リポジトリ名・本体・systemd ユニット・データのパスを `llama-openai-proxy` から `xtranslator-llm-proxy` に変えた。xTranslator 専用（実質 Bethesda ゲーム向け）であることが名前からわからなかったため。
+- 本体: `xtranslator-llm-proxy.rb`。ユニット: `xtranslator-llm-proxy.service` / `xtranslator-llm-proxy-dict.{path,service}`。
+- データ: `~/.local/share/xtranslator-llm-proxy/`（辞書スナップショット・作業中辞書）、`~/.cache/xtranslator-llm-proxy/`（訳キャッシュ）。旧パスへのフォールバックはない。
+- 環境変数（`XTRANSLATOR_*`）とポート（8091）は変えていない。
+- 以下のエントリは当時の名前のまま残している。
+
+Handoff（サービスを動かしている自宅機での移行手順。未実施）:
+
+```sh
+# 1. 旧サービスを止めて外す
+systemctl --user disable --now llama-openai-proxy llama-openai-proxy-dict.path
+rm ~/.config/systemd/user/llama-openai-proxy{.service,-dict.path,-dict.service}
+
+# 2. 作業ツリーとデータを新しい名前に移す
+mv ~/src/llama-openai-proxy ~/src/xtranslator-llm-proxy
+mv ~/.local/share/llama-openai-proxy ~/.local/share/xtranslator-llm-proxy
+mv ~/.cache/llama-openai-proxy ~/.cache/xtranslator-llm-proxy
+
+# 3. 最新を取り込み、remote を新しい URL にする
+cd ~/src/xtranslator-llm-proxy
+git remote set-url origin git@github.com:kusanaginoturugi/xtranslator-llm-proxy.git
+git pull
+
+# 4. symlink を貼り直す（旧 symlink はリンク切れになる）
+rm ~/.local/bin/llama-openai-proxy.rb
+ln -s ~/src/xtranslator-llm-proxy/xtranslator-llm-proxy.rb ~/.local/bin/
+
+# 5. 新しいユニットを入れて起動
+cp systemd/* ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now xtranslator-llm-proxy-dict.path xtranslator-llm-proxy
+journalctl --user -u xtranslator-llm-proxy -f -o cat
+```
+
+- 確認: xTranslator から 1 件訳して、ログに出ること、`~/.cache/xtranslator-llm-proxy/translations.jsonl` に追記されること。
+- xTranslator 側の設定（`127.0.0.1:8091`）は変更不要。
+
 ## 2026-10-01 実運用ログの分析と検証の改善
 
 Findings（812 リクエスト / 1620 行）:

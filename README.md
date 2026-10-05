@@ -1,6 +1,6 @@
-# llama-openai-proxy
+# xtranslator-llm-proxy
 
-xTranslator の OpenAI API 枠を llama.cpp（router モード）に向けるための Ruby プロキシ。
+Bethesda ゲーム（Skyrim SE など）の MOD を日本語化するときに、xTranslator の OpenAI API 枠を llama.cpp（router モード）に向けるための Ruby プロキシ。
 xTranslator の辞書（`UserDictionaries/*.sst`）から書き出したスナップショットを使い、辞書で確定できる訳は辞書から返し、
 残りは用語集と公式訳の類似例文をプロンプトに添えて LLM に訳させる。
 
@@ -8,10 +8,10 @@ xTranslator の辞書（`UserDictionaries/*.sst`）から書き出したスナ�
 xTranslator (wine) ──POST──▶ proxy 127.0.0.1:8091 ──▶ llama-server router 127.0.0.1:8080
                                ├ 辞書スナップショット: 完全一致 / 用語 / 類似例文
                                ├ 検証 → 指摘付き再試行
-                               └ キャッシュ ~/.cache/llama-openai-proxy/translations.jsonl
+                               └ キャッシュ ~/.cache/xtranslator-llm-proxy/translations.jsonl
 
-SST 保存 ─▶ llama-openai-proxy-dict.path ─▶ xtranslator_sst_glossary.rb --format jsonl
-          ─▶ ~/.local/share/llama-openai-proxy/dictionary.jsonl ─▶ proxy が mtime を見て再読込
+SST 保存 ─▶ xtranslator-llm-proxy-dict.path ─▶ xtranslator_sst_glossary.rb --format jsonl
+          ─▶ ~/.local/share/xtranslator-llm-proxy/dictionary.jsonl ─▶ proxy が mtime を見て再読込
 ```
 
 仕様の詳細は [`docs/spec.md`](docs/spec.md)、作業履歴と引き継ぎは [`WORKLOG.md`](WORKLOG.md)。
@@ -20,9 +20,9 @@ SST 保存 ─▶ llama-openai-proxy-dict.path ─▶ xtranslator_sst_glossary.r
 
 | パス | 役割 |
 | --- | --- |
-| `llama-openai-proxy.rb` | プロキシ本体 |
-| `systemd/llama-openai-proxy.service` | プロキシの user サービス |
-| `systemd/llama-openai-proxy-dict.{path,service}` | SST の変更を監視して辞書スナップショットを書き出す |
+| `xtranslator-llm-proxy.rb` | プロキシ本体 |
+| `systemd/xtranslator-llm-proxy.service` | プロキシの user サービス |
+| `systemd/xtranslator-llm-proxy-dict.{path,service}` | SST の変更を監視して辞書スナップショットを書き出す |
 | `xtranslator_sst_glossary.rb` | SST の書き出しツール（`--format jsonl` でスナップショット、`tsv` で用語 TSV） |
 | `lib/sst.rb` | SST リーダ / 有効辞書の列挙（書き出しツール用） |
 | `lib/dictionary.rb` | スナップショットを読み、翻訳メモリ・用語照合・類似例文検索をする |
@@ -38,10 +38,10 @@ systemd の user サービスとして常駐させている（`systemd/`）。
 # 初回インストール
 cp systemd/* ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now llama-openai-proxy-dict.path llama-openai-proxy
+systemctl --user enable --now xtranslator-llm-proxy-dict.path xtranslator-llm-proxy
 
-systemctl --user restart llama-openai-proxy   # コード変更後
-journalctl --user -u llama-openai-proxy -f -o cat   # 訳のログ（--brief 形式）
+systemctl --user restart xtranslator-llm-proxy   # コード変更後
+journalctl --user -u xtranslator-llm-proxy -f -o cat   # 訳のログ（--brief 形式）
 ```
 
 サービスでは `XTRANSLATOR_WARMUP=0` にしている（ログイン直後に VRAM を掴まないため）。
@@ -50,7 +50,7 @@ journalctl --user -u llama-openai-proxy -f -o cat   # 訳のログ（--brief 形
 手で起動する場合（サービスを止めてから）:
 
 ```sh
-ruby ~/src/llama-openai-proxy/llama-openai-proxy.rb --brief
+ruby ~/src/xtranslator-llm-proxy/xtranslator-llm-proxy.rb --brief
 ```
 
 - `--brief` / `-b`: 原文・訳文・どこで訳したか（`glossary` / `cache` / モデル名）だけ表示
@@ -101,27 +101,27 @@ xTranslator は辞書の完全一致だけ、残りは全部このプロキシ�
 ## Dictionary
 
 プロキシは SST を直接読まない。`xtranslator_sst_glossary.rb --format jsonl` が書き出した
-`~/.local/share/llama-openai-proxy/dictionary.jsonl`（1 行 1 件、`source` / `target` / `file`）を読む。
+`~/.local/share/xtranslator-llm-proxy/dictionary.jsonl`（1 行 1 件、`source` / `target` / `file`）を読む。
 
 - 書き出し元: `~/.local/bin/_xTranslator/UserDictionaries/SkyrimSE/*_english_japanese.sst` 全部
   - `UserPrefs/SkyrimSE/prefs_vocab_english_japanese.ini` で `name|1` の辞書は除外、並び順が優先順。同じ原文は先勝ち
-- 自動更新: `llama-openai-proxy-dict.path` が SST のディレクトリと ini を監視（`PathChanged`）し、
+- 自動更新: `xtranslator-llm-proxy-dict.path` が SST のディレクトリと ini を監視（`PathChanged`）し、
   変更があれば 2 秒待ってから書き出す。書き出しは一時ファイル経由で差し替えるので、読み込み途中に壊れたファイルは見えない
 - プロキシの起動時にも 1 回書き出す（ログアウト中の変更を拾う）
 - プロキシはスナップショットの mtime が変わったら、次のリクエストで読み直す（再起動不要）
-- 手動で今すぐ更新: `systemctl --user start llama-openai-proxy-dict`
+- 手動で今すぐ更新: `systemctl --user start xtranslator-llm-proxy-dict`
 - 手動で直したい訳は `xtranslator-glossary.local.tsv` に `原文<TAB>訳文` で書く（これも自動で読み直す）
 
 ### 作業中辞書（session）
 
 SST を保存するのは mod を訳し終えてからが多いので、それまでの訳をプロキシ自身が貯めて使い回す。
 
-- 検証を通った LLM の訳を 1 行ずつ `~/.local/share/llama-openai-proxy/session.jsonl` に追記する
+- 検証を通った LLM の訳を 1 行ずつ `~/.local/share/xtranslator-llm-proxy/session.jsonl` に追記する
 - 優先度は 手動 TSV ＞ スナップショット ＞ 作業中辞書。完全一致・用語・類似例文のすべてに使う
   - mod 固有の NPC 名やアイテム名を一度訳すと、以降の文ではその訳を用語として強制する
   - 類似例文 3 件のうち最大 2 件を作業中辞書から優先して選ぶ（`XTRANSLATOR_SESSION_EXAMPLE_LIMIT`）
 - SST を保存してスナップショットの**中身が変わったら**空にする（訳は SST 側に入ったとみなす）。再起動による同じ内容の書き出し直しでは消さない
-- 手動で捨てる: `command rm -f ~/.local/share/llama-openai-proxy/session.jsonl`（次のリクエストでプロキシが気づく）
+- 手動で捨てる: `command rm -f ~/.local/share/xtranslator-llm-proxy/session.jsonl`（次のリクエストでプロキシが気づく）
 - xTranslator 上で手直しした訳は、SST を保存するまでプロキシには見えない
 
 ## Try
@@ -144,18 +144,18 @@ scripts/try.sh 8091 < scripts/samples.txt
 | `XTRANSLATOR_CLIENT_BUDGET` | `18` | 秒。再試行してもこの時間に収まりそうなときだけ再試行する（xTranslator は約 20 秒で切断する） |
 | `XTRANSLATOR_GLOSSARY_LIMIT` | `40` | プロンプトに入れる用語の上限 |
 | `XTRANSLATOR_EXAMPLE_LIMIT` | `3` | プロンプトに入れる類似例文の数（0 で無効） |
-| `XTRANSLATOR_CACHE` | `~/.cache/llama-openai-proxy/translations.jsonl` | 空文字で無効 |
+| `XTRANSLATOR_CACHE` | `~/.cache/xtranslator-llm-proxy/translations.jsonl` | 空文字で無効 |
 | `XTRANSLATOR_WARMUP` | `1` | `0` で起動時ロードしない |
-| `XTRANSLATOR_DICTIONARY` | `~/.local/share/llama-openai-proxy/dictionary.jsonl` | 辞書スナップショット |
-| `XTRANSLATOR_SESSION` | `~/.local/share/llama-openai-proxy/session.jsonl` | 作業中辞書。空文字で無効 |
+| `XTRANSLATOR_DICTIONARY` | `~/.local/share/xtranslator-llm-proxy/dictionary.jsonl` | 辞書スナップショット |
+| `XTRANSLATOR_SESSION` | `~/.local/share/xtranslator-llm-proxy/session.jsonl` | 作業中辞書。空文字で無効 |
 | `XTRANSLATOR_SESSION_EXAMPLE_LIMIT` | `2` | 類似例文のうち作業中辞書から優先して入れる件数 |
 | `XTRANSLATOR_GLOSSARY_PREPEND` | リポジトリ内 `xtranslator-glossary.local.tsv` | `:` 区切りで複数可 |
 
 ## Reload
 
-- プロキシのコードを変えたら: `systemctl --user restart llama-openai-proxy`
+- プロキシのコードを変えたら: `systemctl --user restart xtranslator-llm-proxy`
 - 辞書（SST / local TSV）を変えたら: 不要（path unit が書き出し、プロキシが自動で再読込）
 - `systemd/` を変えたら: `cp systemd/* ~/.config/systemd/user/ && systemctl --user daemon-reload`
-- プロンプトや既定モデルを変えて過去訳を捨てたいとき: `rm ~/.cache/llama-openai-proxy/translations.jsonl`
+- プロンプトや既定モデルを変えて過去訳を捨てたいとき: `rm ~/.cache/xtranslator-llm-proxy/translations.jsonl`
 - `Misc/ApiTranslator.txt` を変えたら: xTranslator 再起動
 - `/etc/llama.cpp/models.ini` を変えたら: llama.cpp 再起動
