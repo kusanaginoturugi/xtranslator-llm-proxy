@@ -18,6 +18,7 @@ Record:
 Handoff:
 
 - 職場で同じ辞書を使って辞書ありを測る。辞書と 4070 の結果は非公開リポジトリ `kusanaginoturugi/xtranslator-llm-proxy-dict` にある（手順はその README）。
+- Benchmark は辞書ありを主にする（実運用は辞書あり。辞書を共有したので機材間で条件を揃えられる）。3060 の辞書ありがそろったら README の Benchmark を辞書ありの表に組み替え、辞書なしは素のモデル比較として残す。Cloudflare / Flash-Lite も職場にキーがあれば辞書ありで測る。
 - `llama.cpp-cuda-git` は b11223 固定版を入れている。`yay -Syu` で最新版に上がる。
 - 名前変更の移行が途中: 旧 `~/src/llama-openai-proxy` に未 push のコミット 1 件と未コミットの変更（README.md、docs/spec.md）が残っている。旧 symlink `~/.local/bin/llama-openai-proxy.rb` と旧ユニット（`llama-openai-proxy-dict.*`）も残っている。中身を確認してから片付ける。
 
