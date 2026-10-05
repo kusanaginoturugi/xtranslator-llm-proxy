@@ -151,6 +151,21 @@ scripts/try.sh 8091 < scripts/samples.txt
 | `XTRANSLATOR_SESSION_EXAMPLE_LIMIT` | `2` | 類似例文のうち作業中辞書から優先して入れる件数 |
 | `XTRANSLATOR_GLOSSARY_PREPEND` | リポジトリ内 `xtranslator-glossary.local.tsv` | `:` 区切りで複数可 |
 
+## Ollama
+
+OpenAI 互換 API だけを使っているので、ollama でも上流を差し替えれば動くはず（未検証）。
+
+```sh
+XTRANSLATOR_UPSTREAM=http://127.0.0.1:11434/v1/chat/completions \
+XTRANSLATOR_MODEL=<ollama のモデル名> \
+ruby xtranslator-llm-proxy.rb --brief
+```
+
+ollama 側で次の 2 つを設定しておく。
+
+- コンテキスト長: 既定の `num_ctx` は小さく、OpenAI 互換 API からは変えられない。用語・類似例文・長文が入るとプロンプトの前半が黙って切られ、指示が消える。`OLLAMA_CONTEXT_LENGTH` か Modelfile の `PARAMETER num_ctx` で 32768 程度にする。
+- keep-alive: 既定では 5 分使わないとモデルを降ろす。降ろした後の最初の 1 件は xTranslator の timeout（約 20 秒）を超えやすい。`OLLAMA_KEEP_ALIVE=-1` か長めの値にする。
+
 ## Reload
 
 - プロキシのコードを変えたら: `systemctl --user restart xtranslator-llm-proxy`
