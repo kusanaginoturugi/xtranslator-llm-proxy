@@ -1,12 +1,23 @@
 # xtranslator-llm-proxy
 
-Bethesda ゲーム（Skyrim SE など）の MOD を日本語化するときに、xTranslator の OpenAI API 枠を llama.cpp（router モード）に向けるための Ruby プロキシ。
+Bethesda ゲーム（Skyrim SE など）の MOD を日本語化するための、xTranslator 用の翻訳プロキシ（Ruby）。xTranslator の OpenAI API 枠に挿して使う。
+
+**短文はローカル LLM、長文はクラウド LLM** で訳し分ける。
+
+- 短文（アイテム名・セリフなど、数が多い）: ローカル LLM（llama.cpp）。ネットワークの往復がないぶん速く（100 字以内で 1 件 0.6 秒前後）、訳の崩れも少ない
+- 長文（本・手紙・日記。既定では辞書で引けなかった残りが 1000 字以上）: クラウド LLM（Gemini 3.5 Flash-Lite など）。2748 字でローカル 14.2 秒（RTX 3060）に対して 4.0 秒で、xTranslator が約 20 秒で切断するのに余裕を持って間に合う。訳もやや自然
+- クラウド LLM がエラー（回数制限など）を返したらローカルで訳し直す。クラウド LLM を設定しなければローカルだけで動く
+
+数字は [Benchmark](#benchmark) と [Quality](#quality-辞書なし)。
+
 xTranslator の辞書（`UserDictionaries/*.sst`）から書き出したスナップショットを使い、辞書で確定できる訳は辞書から返し、
 残りは用語集と公式訳の類似例文をプロンプトに添えて LLM に訳させる。
 
 ```
-xTranslator (wine) ──POST──▶ proxy 127.0.0.1:8091 ──▶ llama-server router 127.0.0.1:8080
+xTranslator (wine) ──POST──▶ proxy 127.0.0.1:8091
                                ├ 辞書スナップショット: 完全一致 / 用語 / 類似例文
+                               ├ 短文 ─▶ ローカル LLM（llama-server router 127.0.0.1:8080）
+                               ├ 長文 ─▶ クラウド LLM（Gemini API など。エラーならローカルへ）
                                ├ 検証 → 指摘付き再試行
                                └ キャッシュ ~/.cache/xtranslator-llm-proxy/translations.jsonl
 
@@ -85,6 +96,7 @@ OpenAI_ArrayTimePause=0
 `OpenAI_CharLimit` を超える文字列は xTranslator が送る前に捨てる（「API の文字数上限を越えているため一部の文字列は無視されます」）。
 
 xTranslator は応答を約 20 秒しか待たない（設定項目なし）。約 2700 文字の本で 16 秒程度なので、それより長い文は 1 回目は切断されて訳が反映されない。
+長文を[クラウド LLM へ](#長文をクラウド-llm-へ)回せば、2700 文字で 4 秒程度なので切断されにくい。
 プロキシは切断後も訳を最後まで作ってキャッシュするので、**もう一度同じ文を翻訳すれば即座に反映される**。
 
 ## Workflow
@@ -226,9 +238,9 @@ scripts/compare.rb local.jsonl cloudflare.jsonl google.jsonl > comparison.md  # 
 | `XTRANSLATOR_UPSTREAM_TIMEOUT` | `30` | 秒。read timeout は `これ + max_tokens/25` 秒。超えたら原文をそのまま返す |
 | `XTRANSLATOR_API_KEY` | 空 | 設定すると上流に `Authorization: Bearer` で送る（Cloudflare など） |
 | `XTRANSLATOR_EXTRA_BODY` | `{"chat_template_kwargs":{"enable_thinking":false}}` | 上流へのリクエストに足す JSON。思考を止める指定。Google は知らないフィールドを 400 で弾くので `{}` にする |
-| `XTRANSLATOR_LONG_MODEL` | 空 | 設定すると長文だけこのモデルへ（[長文だけ別の上流へ](#長文だけ別の上流へ)） |
+| `XTRANSLATOR_LONG_MODEL` | 空 | 設定すると長文だけこのモデルへ（[長文をクラウド LLM へ](#長文をクラウド-llm-へ)） |
 | `XTRANSLATOR_LONG_MIN_CHARS` | `1000` | 辞書で引けなかった残りがこの文字数（空白を除く）以上なら長文 |
-| `XTRANSLATOR_LONG_UPSTREAM` / `_LONG_API_KEY` / `_LONG_EXTRA_BODY` | 通常の上流と同じ | 長文用の上流 |
+| `XTRANSLATOR_LONG_UPSTREAM` / `_LONG_API_KEY` / `_LONG_EXTRA_BODY` | 通常の上流と同じ | 長文を送るクラウド LLM |
 | `XTRANSLATOR_RETRIES` | `1` | 検証 NG 時の再試行回数 |
 | `XTRANSLATOR_CLIENT_BUDGET` | `18` | 秒。再試行してもこの時間に収まりそうなときだけ再試行する（xTranslator は約 20 秒で切断する） |
 | `XTRANSLATOR_GLOSSARY_LIMIT` | `40` | プロンプトに入れる用語の上限 |
@@ -240,10 +252,10 @@ scripts/compare.rb local.jsonl cloudflare.jsonl google.jsonl > comparison.md  # 
 | `XTRANSLATOR_SESSION_EXAMPLE_LIMIT` | `2` | 類似例文のうち作業中辞書から優先して入れる件数 |
 | `XTRANSLATOR_GLOSSARY_PREPEND` | リポジトリ内 `xtranslator-glossary.local.tsv` | `:` 区切りで複数可 |
 
-## 長文だけ別の上流へ
+## 長文をクラウド LLM へ
 
-短文はローカルが速く崩れも少ないが、長文はクラウドの方が速い（[Benchmark](#benchmark)）。
-`XTRANSLATOR_LONG_MODEL` を設定すると、辞書で引けなかった残りが `XTRANSLATOR_LONG_MIN_CHARS` 字以上のときだけ長文用の上流へ送る。
+短文はローカル LLM が速く崩れも少ないが、長文はクラウド LLM の方が速い（[Benchmark](#benchmark)）。
+`XTRANSLATOR_LONG_MODEL` を設定すると、辞書で引けなかった残りが `XTRANSLATOR_LONG_MIN_CHARS` 字以上のときだけクラウド LLM へ送る。
 長文は数が少ないので、Gemini の無料枠の回数制限にはまず当たらない。
 
 ```sh
@@ -254,7 +266,7 @@ XTRANSLATOR_LONG_EXTRA_BODY='{}' \
 ruby xtranslator-llm-proxy.rb --brief
 ```
 
-- 長文用の上流がエラー（回数制限の 429 など）を返したら、ローカルで訳し直す。ログに `long upstream failed, fall back to ...` が出る
+- クラウド LLM がエラー（回数制限の 429 など）を返したら、ローカル LLM で訳し直す。ログに `long upstream failed, fall back to ...` が出る
 - 振り分けを入れる前にローカルで訳した長文は、キャッシュからそのまま返す
 - systemd で使うなら、キーは `EnvironmentFile=` で読ませる（ユニットファイルに直接書かない）
 
