@@ -1,5 +1,26 @@
 # Work Log
 
+## 2026-10-05 RTX 4070 の計測と訳の比較（辞書なし）
+
+Record:
+
+- 自宅機（RTX 4070）で `scripts/bench.sh` と短文 50 件を測り、README の 4070 列を埋めた。2748 字で 8.3 秒、短文 50 件は合計 17.0 秒（3060 は 14.2 秒・30.5 秒）。
+- 3060 と同じ条件にした: GGUF を `gemma-4-12B-it-qat-ja-Q4_K_M.gguf` に、llama.cpp を b11223 に揃えた（AUR の `llama.cpp-cuda-git` を `#tag=b11223` に固定してビルド）。MTP（`mtp-gemma-4-12B-it.gguf`）を付けた単体の `llama-server` を 8085 番で立てて測った。`spec-draft-n-max 4` は 3060 側の記録がなく推定。
+- 計測用サーバー（`M` は dahara1 の Q4_K_M、`D` は unsloth の `mtp-gemma-4-12B-it.gguf`。どちらも `~/.cache/huggingface/hub` 配下）:
+  `llama-server --host 127.0.0.1 --port 8085 -m "$M" --alias gemma-4-12b-it-qat-imatrix -ngl all -c 32768 -np 1 --jinja --reasoning off --temp 1.0 --top-p 0.95 --top-k 64 --min-p 0.0 -md "$D" --spec-type draft-mtp --spec-draft-n-max 4`
+  ベンチは `XTRANSLATOR_UPSTREAM=http://127.0.0.1:8085/v1/chat/completions` で流す。
+- 自宅機の router（`/etc/llama.cpp/models.ini`）の `gemma-4-12b-it-qat-imatrix` は `UD-Q4_K_XL`・MTP なしのまま。実運用はベンチと条件が違う。
+- 同じ 55 件の訳を 3060 と比べた。38 件が一致、17 件で言い回しが変わった（`docs/quality/no-dictionary/rtx4070-vs-3060.md`）。意味の崩れはなし。固有名詞の公式訳どおりは 2 か所で同じ。
+- 辞書ありも 4070 で測った（README の Quality（辞書あり）節、`docs/quality/dictionary/comparison.md`）。固有名詞は 9 か所全部が公式訳どおり（辞書なしは 2）。短文 50 件の合計は 17.0 → 25.1 秒。#45 にハングル（「높은」）が混ざった。
+- 辞書（92949 行、sha256 `0cb174ef…d5ec`）を非公開リポジトリ `kusanaginoturugi/xtranslator-llm-proxy-dict` に置いた。4070 の訳の生データも `results/` に入れた。
+- 未対応: プロキシの検証がハングルの混入を検出しない（タイ文字と同じ問題）。
+
+Handoff:
+
+- 職場で同じ辞書を使って辞書ありを測る。辞書と 4070 の結果は非公開リポジトリ `kusanaginoturugi/xtranslator-llm-proxy-dict` にある（手順はその README）。
+- `llama.cpp-cuda-git` は b11223 固定版を入れている。`yay -Syu` で最新版に上がる。
+- 名前変更の移行が途中: 旧 `~/src/llama-openai-proxy` に未 push のコミット 1 件と未コミットの変更（README.md、docs/spec.md）が残っている。旧 symlink `~/.local/bin/llama-openai-proxy.rb` と旧ユニット（`llama-openai-proxy-dict.*`）も残っている。中身を確認してから片付ける。
+
 ## 2026-10-05 名前を xtranslator-llm-proxy に変更
 
 Record:

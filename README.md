@@ -160,6 +160,7 @@ BENCH_RUNS=1 BENCH_SUMMARY=1 scripts/bench.sh scripts/bench-short.txt   # 100 �
 
 条件: `gemma-4-12b-it-qat-imatrix`（`gemma-4-12B-it-qat-ja-Q4_K_M.gguf`）、`c = 32768`、`parallel = 1`、
 MTP の投機的デコード（`spec-type = draft-mtp`）、思考なし。llama.cpp b11223。
+RTX 4070 も同じ GGUF・同じビルドで、router ではなく単体の `llama-server` で測った（`spec-draft-n-max 4`。3060 側の値は記録がなく、揃っているかは要確認）。
 Cloudflare は Workers AI の `@cf/google/gemma-4-26b-a4b-it`（モデルが違う）。ばらつきが大きく、2748 字は 3 回中 8.3〜22.6 秒で、20 秒を超えることがある。
 Gemini 3.5 Flash-Lite は Google AI Studio の OpenAI 互換 API（`XTRANSLATOR_EXTRA_BODY={}`）。何も指定しなくても思考せずに返る。
 AI Studio の `gemma-4-26b-a4b-it` は思考を止める指定がどれも 400 になり、本文に `<thought>` を出してから訳すので、短い 1 文でも 12〜20 秒かかる。xTranslator では使えないので測っていない。
@@ -175,19 +176,19 @@ scripts/bench.sh
 
 | 文字数 | RTX 3060 12GB | RTX 4070 | Cloudflare | Gemini 3.5 Flash-Lite |
 | ---: | ---: | ---: | ---: | ---: |
-| 65 | 0.5 | | 0.9 | 1.4 |
-| 117 | 0.9 | | 1.9 | 1.2 |
-| 376 | 2.5 | | 2.3 | 1.6 |
-| 1350 | 8.3 | | 4.3 | 3.0 |
-| 2748 | 14.2 | | 19.1 | 4.0 |
+| 65 | 0.5 | 0.3 | 0.9 | 1.4 |
+| 117 | 0.9 | 0.6 | 1.9 | 1.2 |
+| 376 | 2.5 | 1.6 | 2.3 | 1.6 |
+| 1350 | 8.3 | 4.7 | 4.3 | 3.0 |
+| 2748 | 14.2 | 8.3 | 19.1 | 4.0 |
 
 100 字以内 50 件（`scripts/bench-short.txt`）。
 
 | | RTX 3060 12GB | RTX 4070 | Cloudflare | Gemini 3.5 Flash-Lite |
 | --- | ---: | ---: | ---: | ---: |
-| 合計（秒） | 30.5 | | 52.8 | 61.1 |
-| 中央値 / 最大（秒） | 0.6 / 0.8 | | 1.0 / 4.2 | 1.2 / 1.5 |
-| 問題あり | 0 | | 0 | 0 |
+| 合計（秒） | 30.5 | 17.0 | 52.8 | 61.1 |
+| 中央値 / 最大（秒） | 0.6 / 0.8 | 0.3 / 0.4 | 1.0 / 4.2 | 1.2 / 1.5 |
+| 問題あり | 0 | 0 | 0 | 0 |
 
 ## Quality (辞書なし)
 
@@ -228,6 +229,35 @@ scripts/compare.rb local.jsonl cloudflare.jsonl google.jsonl > comparison.md  # 
 まとめ: 文の崩れはローカルが一番少ない。固有名詞はローカルと Cloudflare は公式訳をほとんど知らず、Flash-Lite はよく知っている
 （[固有名詞の分析](docs/quality/no-dictionary/proper-nouns.md)）。長文の速さと安定は Flash-Lite が一番。
 モデルが違う（ローカル 12B、Cloudflare 26B の MoE、Flash-Lite は非公開）ことに注意。
+
+RTX 4070（同じ GGUF・ビルド・temperature 0）でも同じ 55 件を訳した。38 件は 3060 と一字一句同じで、17 件は言い回しが変わった
+（[差分](docs/quality/no-dictionary/rtx4070-vs-3060.md)）。意味が壊れた訳はなかったが、#52 は「教わってもらえ」と語法が崩れた。固有名詞の公式訳どおりは 2 か所で変わらない。
+`Markarth` は「マークアルス」、`Thalmor`（#38）は「タルモア」、`my Thane` は「私のサーン」になった。
+差の原因が GPU・ドライバ・投機の設定のどれかは切り分けていない。
+
+## Quality (辞書あり)
+
+辞書スナップショット（92949 行、うち用語 26032）を渡して、同じ 55 件を RTX 4070 で訳した。モデルとサーバーは Benchmark と同じ条件。
+辞書は非公開リポジトリ `kusanaginoturugi/xtranslator-llm-proxy-dict` に置いていて、機材間で同じものを使う。
+全件の対訳は [`docs/quality/dictionary/comparison.md`](docs/quality/dictionary/comparison.md)。
+
+```sh
+BENCH_DICTIONARY=1 XTRANSLATOR_DICTIONARY=~/src/xtranslator-llm-proxy-dict/dictionary.jsonl \
+  BENCH_RUNS=1 BENCH_SUMMARY=1 BENCH_OUT=local.jsonl scripts/bench.sh scripts/bench-short.txt
+```
+
+| RTX 4070 | 辞書なし | 辞書あり |
+| --- | ---: | ---: |
+| 100 字以内 50 件 合計 / 中央値 / 最大（秒） | 17.0 / 0.3 / 0.4 | 25.1 / 0.5 / 1.4 |
+| 2748 字（秒） | 8.3 | 8.1 |
+| 固有名詞が公式訳どおり（確認できた 9 か所） | 2 | 9 |
+| 他の文字が混ざった | 0 | 1 |
+
+- 公式訳どおりになった: サルモール、同胞団、闇の一党、ハイ・フロスガー、マルカルス、グレイビアード。出典は未確認だが、星霜の書（Elder Scroll）、従士殿（my Thane）、ブリーク・フォール墓地も日本語版らしい訳になった。
+- #45 で「山岳地帯の 높은場所」とハングルが混ざった。プロキシの検証はラテン文字の混入しか見ないので通った。
+- `Fus Ro Dah` が英語のまま残った（辞書なしは「フス・ロ・ダ」）。日本語版の表記は要確認。
+- 長文では「見習り」「見認めて」の誤字と、Jarl が「ヤルル」と「ヤール」でぶれた。
+- 短文は用語と類似例文でプロンプトが長くなるぶん、1 件あたり 0.2 秒ほど遅い。
 
 ## Environment
 
