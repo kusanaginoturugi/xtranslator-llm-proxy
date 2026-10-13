@@ -1,5 +1,10 @@
 # Work Log
 
+## 2026-10-14 本編の固有名詞3件
+
+- `Evette San` は `エヴェット・サン`、`Dainty Sload` は `デインティ・スロード号`、`Wolfskull Cave` は `ウルフスカル洞窟` に統一。手動TSVに追加する。
+- 本編SSTの6行と非公式パッチSSTの1行を修正し、共有辞書の再生成時にも補正する。元SSTは `~/.local/share/xtranslator-llm-proxy/sst-backups/20261014-three-terms/` に保存。共有辞書は83,658行のまま、7行の訳文だけ変更。短い用例の訳語抜けは3語とも0件。
+
 ## 2026-10-14 Vominheim系辞書の一時除外
 
 - 訳質を見直すまで、`vominheim`・`vominfrost`・`valefrost` の3 SSTをxTranslatorのiniで無効化し、共有辞書の再生成からも除外する。元SSTは残す。
