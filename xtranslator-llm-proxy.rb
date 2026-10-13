@@ -9,6 +9,7 @@ require "socket"
 require "time"
 require "uri"
 require_relative "lib/dictionary"
+require_relative "lib/unwanted-han"
 
 BRIEF_LOG = !!(ARGV.delete("--brief") || ARGV.delete("-b"))
 DUMP_PATH = (i = ARGV.index("--dump")) ? ARGV.slice!(i, 2)[1] : ENV["XTRANSLATOR_DUMP"]
@@ -53,7 +54,7 @@ SESSION_EXAMPLE_LIMIT = env("SESSION_EXAMPLE_LIMIT", "2").to_i
 EXAMPLE_SIMILARITY = env("EXAMPLE_SIMILARITY", "0") == "1"
 CACHE_PATH = env("CACHE", File.expand_path("~/.cache/xtranslator-llm-proxy/translations.jsonl"))
 PROMPT_VERSION = EXAMPLE_SIMILARITY ? "3-similarity" : "3"
-UNWANTED_SCRIPT = /[\p{Hangul}\p{Thai}\p{Cyrillic}]/
+UNWANTED_SCRIPT = Regexp.union(/[\p{Hangul}\p{Thai}\p{Cyrillic}]/, UnwantedHan::PATTERN)
 
 DICTIONARY = Dictionary.new(
   snapshot: DICTIONARY_PATH,
@@ -353,7 +354,7 @@ def translate_with_llm(model, text, upstream = DEFAULT_UPSTREAM)
   end
 
   if best[0].match?(UNWANTED_SCRIPT)
-    raise UpstreamError.new(502, JSON.dump(error: "translation contains Hangul, Thai, or Cyrillic text"))
+    raise UpstreamError.new(502, JSON.dump(error: "translation contains non-Japanese characters"))
   end
 
   best
@@ -547,7 +548,7 @@ loop do
       next
     end
 
-    raise UpstreamError.new(502, JSON.dump(error: "translation contains Hangul, Thai, or Cyrillic text")) if translated.match?(UNWANTED_SCRIPT)
+    raise UpstreamError.new(502, JSON.dump(error: "translation contains non-Japanese characters")) if translated.match?(UNWANTED_SCRIPT)
 
     log_brief_translation(source_text, translated, label)
     write_response(sock, 200, completion_response(translated.gsub(/\r?\n/, eol), label))
