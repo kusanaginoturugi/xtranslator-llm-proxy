@@ -4,8 +4,8 @@
 
 - 対象: `Temple of Vuldur`、`Honningbrew Meadery`、`Thari-Ma`、`Fort Volmin`、`Desolate Veil`、`Viggo Seawarden`、`Imperial Legion`、`Hwen Frost`、`Banefrost Isle`、`White Arbiter`。
 - `Honningbrew Meadery` は文中の既存訳に合わせて `ホニングブリュー醸造所`。`Fort Volmin` も文中の多数派に合わせて `ヴォルミン砦`。`Restore Health` は薬・魔法で訳し分けるため、単独項目 `体力治癒` を維持し、文中へ一律適用しない。
-- 手動 TSV に基準訳を追加。元SSTの5ファイル85行、共有辞書の64行を修正した。バックアップは `~/.local/share/xtranslator-llm-proxy/sst-backups/20261014-listed-terms/`。辞書再生成時の補正ルールを辞書リポジトリに追加。
-- 元SSTの単独項目は10語とも各1訳。実運用と共有辞書は88,910行で SHA256 が一致。短い用例では固有名詞9件の訳語抜け0件。`Imperial Legion` の「帝国の全軍」は文脈に合う言い換えとして維持した。
+- 手動 TSV に基準訳を追加。元SSTの5ファイル87行、共有辞書の66行を修正した。バックアップは `~/.local/share/xtranslator-llm-proxy/sst-backups/20261014-listed-terms/` と `20261014-listed-terms-long-text/`。辞書再生成時の補正ルールを辞書リポジトリに追加。
+- 元SSTの単独項目は10語とも各1訳。実運用と共有辞書は88,910行で SHA256 が一致。長文を含む全用例で固有名詞9件の訳語抜け0件。`Imperial Legion` の「帝国の全軍」は文脈に合う言い換えとして維持した。
 
 ## 2026-10-14 Lady Mara の表記統一
 
