@@ -132,8 +132,8 @@ class Dictionary
   # 原文と珍しい単語を多く共有する既訳を返す。文体と固有名詞の訳し方を揃える用。
   # 作業中辞書の例文は session_limit 件まで優先して入れる（同じ mod の直前の訳が一番近いため）。
   # 並びは 公式訳 → 作業中辞書（原文に近い位置）。
-  def similar_examples(text, limit: 3, session_limit: 2, min_score: 6.0)
-    return [] if limit <= 0
+  def similar_examples(text, limit: 3, session_limit: 2, min_score: 6.0, with_similarity: false)
+    return [] if limit <= 0 || text.to_s.length > EXAMPLE_MAX_CHARS * 2
 
     query = Dictionary.words(Dictionary.mask_tags(text)).reject { |w| w.length < 3 || STOPWORDS.include?(w) }.uniq
     scores = Hash.new(0.0)
@@ -155,7 +155,28 @@ class Dictionary
 
     session = ranked.select { |id| @session_ids.include?(id) }.first([session_limit, limit].min)
     official = (ranked - session).first(limit - session.length)
-    (official + session).map { |id| @examples[id] }
+    (official + session).map do |id|
+      example = @examples[id]
+      with_similarity ? [*example, Dictionary.text_similarity(text, example[0])] : example
+    end
+  end
+
+  # 原文の編集距離から近似率を出す。候補選択には使わず、参考訳の目安だけにする。
+  def self.text_similarity(left, right)
+    left = left.to_s.downcase.strip.chars
+    right = right.to_s.downcase.strip.chars
+    return 100 if left == right
+    return 0 if left.empty? || right.empty?
+
+    previous = (0..right.length).to_a
+    left.each_with_index do |char, i|
+      current = [i + 1]
+      right.each_with_index do |other, j|
+        current << [current[j] + 1, previous[j + 1] + 1, previous[j] + (char == other ? 0 : 1)].min
+      end
+      previous = current
+    end
+    ((1.0 - previous[-1].to_f / [left.length, right.length].max) * 100).round
   end
 
   private

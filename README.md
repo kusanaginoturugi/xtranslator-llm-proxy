@@ -279,6 +279,7 @@ BENCH_DICTIONARY=1 XTRANSLATOR_DICTIONARY=~/src/xtranslator-llm-proxy-dict/dicti
 | `XTRANSLATOR_CLIENT_BUDGET` | `18` | 秒。再試行してもこの時間に収まりそうなときだけ再試行する（xTranslator は約 20 秒で切断する） |
 | `XTRANSLATOR_GLOSSARY_LIMIT` | `40` | プロンプトに入れる用語の上限 |
 | `XTRANSLATOR_EXAMPLE_LIMIT` | `3` | プロンプトに入れる類似例文の数（0 で無効） |
+| `XTRANSLATOR_EXAMPLE_SIMILARITY` | `0` | `1` で類似例文に原文との文字列近似率を添える（実験用） |
 | `XTRANSLATOR_CACHE` | `~/.cache/xtranslator-llm-proxy/translations.jsonl` | 空文字で無効 |
 | `XTRANSLATOR_WARMUP` | `1` | `0` で起動時ロードしない |
 | `XTRANSLATOR_DICTIONARY` | `~/.local/share/xtranslator-llm-proxy/dictionary.jsonl` | 辞書スナップショット |

@@ -50,8 +50,9 @@ GLOSSARY_PREPEND = env("GLOSSARY_PREPEND", File.join(__dir__, "xtranslator-gloss
 GLOSSARY_LIMIT = env("GLOSSARY_LIMIT", "40").to_i
 EXAMPLE_LIMIT = env("EXAMPLE_LIMIT", "3").to_i
 SESSION_EXAMPLE_LIMIT = env("SESSION_EXAMPLE_LIMIT", "2").to_i
+EXAMPLE_SIMILARITY = env("EXAMPLE_SIMILARITY", "0") == "1"
 CACHE_PATH = env("CACHE", File.expand_path("~/.cache/xtranslator-llm-proxy/translations.jsonl"))
-PROMPT_VERSION = "3"
+PROMPT_VERSION = EXAMPLE_SIMILARITY ? "3-similarity" : "3"
 UNWANTED_SCRIPT = /[\p{Hangul}\p{Thai}\p{Cyrillic}]/
 
 DICTIONARY = Dictionary.new(
@@ -163,7 +164,10 @@ def build_prompt(text, terms, examples, problems = [])
 
   unless examples.empty?
     sections << "Reference translations of similar lines (official localization and earlier translations). Follow their wording:\n" +
-                examples.map { |s, t| "English: #{s}\nJapanese: #{t}" }.join("\n\n")
+                examples.map do |source, target, similarity|
+                  prefix = "Approximate text similarity: #{similarity}%\n" if similarity
+                  "#{prefix}English: #{source}\nJapanese: #{target}"
+                end.join("\n\n")
   end
 
   unless problems.empty?
@@ -319,7 +323,8 @@ end
 # 戻り値: [訳文, 残った問題]
 def translate_with_llm(model, text, upstream = DEFAULT_UPSTREAM)
   terms = DICTIONARY.match_terms(text, limit: GLOSSARY_LIMIT)
-  examples = DICTIONARY.similar_examples(text, limit: EXAMPLE_LIMIT, session_limit: SESSION_EXAMPLE_LIMIT)
+  examples = DICTIONARY.similar_examples(text, limit: EXAMPLE_LIMIT, session_limit: SESSION_EXAMPLE_LIMIT,
+                                         with_similarity: EXAMPLE_SIMILARITY)
   max_tokens = (text.length * 3).clamp(64, 8192)
   best = nil
   problems = []
