@@ -130,6 +130,17 @@ xTranslator は辞書の完全一致だけ、残りは全部このプロキシ�
 - 手動で今すぐ更新: `systemctl --user start xtranslator-llm-proxy-dict`
 - 手動で直したい訳は `xtranslator-glossary.local.tsv` に `原文<TAB>訳文` で書く（これも自動で読み直す）
 
+### 表記揺れの確認
+
+```sh
+ruby scripts/audit-dictionary-terms.rb --limit 20
+ruby scripts/audit-dictionary-terms.rb --term 'Temple of Mara'
+ruby scripts/audit-sst-conflicts.rb --limit 20
+ruby scripts/audit-sst-conflicts.rb --term 'Temple of Mara'
+```
+
+前者は実運用の `dictionary.jsonl` と手動 TSV から英語の固有名詞を拾い、例文中に基準訳が含まれないものを数える。自動一覧は英語7語以上の例文だけを対象にする（`--min-source-words` で変更可）。`--term` は短い原文も含めて全件確認する。後者は有効な元SSTを読み、同じ英語原文に複数の訳がある項目を探す。既定は固有名詞らしい原文だけで、`--all` で全文を対象にする。どちらも候補を出すだけで辞書は変更しない。訳の省略や語順の違いも候補に入るため、文脈を見て判断する。
+
 ### 作業中辞書（session）
 
 SST を保存するのは mod を訳し終えてからが多いので、それまでの訳をプロキシ自身が貯めて使い回す。
