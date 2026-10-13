@@ -1,5 +1,11 @@
 # Work Log
 
+## 2026-10-14 Vominheim系辞書の一時除外
+
+- 訳質を見直すまで、`vominheim`・`vominfrost`・`valefrost` の3 SSTをxTranslatorのiniで無効化し、共有辞書の再生成からも除外する。元SSTは残す。
+- プロキシの手動TSVから、これらのSSTを出典とする20語を削除した。共有・実運用辞書は88,910行から83,658行へ。5,252行が消え、重複していた13行は他のSSTの訳に切り替わる。
+- iniと共有辞書関連ファイルの変更前コピーは `~/.local/share/xtranslator-llm-proxy/sst-backups/20261014-vominheim-disabled/`。再有効化する際はiniと辞書再生成スクリプトの両方を戻す。
+
 ## 2026-10-14 用語の追加統一
 
 - 対象: `Temple of Vuldur`、`Honningbrew Meadery`、`Thari-Ma`、`Fort Volmin`、`Desolate Veil`、`Viggo Seawarden`、`Imperial Legion`、`Hwen Frost`、`Banefrost Isle`、`White Arbiter`。
