@@ -52,6 +52,7 @@ EXAMPLE_LIMIT = env("EXAMPLE_LIMIT", "3").to_i
 SESSION_EXAMPLE_LIMIT = env("SESSION_EXAMPLE_LIMIT", "2").to_i
 CACHE_PATH = env("CACHE", File.expand_path("~/.cache/xtranslator-llm-proxy/translations.jsonl"))
 PROMPT_VERSION = "3"
+UNWANTED_SCRIPT = /[\p{Hangul}\p{Thai}\p{Cyrillic}]/
 
 DICTIONARY = Dictionary.new(
   snapshot: DICTIONARY_PATH,
@@ -122,10 +123,14 @@ class TranslationCache
 
   def key(model, text) = [PROMPT_VERSION, model, text].join("\t")
 
-  def [](model, text) = @entries[key(model, text)]
+  def [](model, text)
+    cached = @entries[key(model, text)]
+    cached unless cached&.match?(UNWANTED_SCRIPT)
+  end
 
   def store(model, text, translated)
     return if @path.to_s.empty?
+    return if translated.match?(UNWANTED_SCRIPT)
 
     k = key(model, text)
     @entries[k] = translated
@@ -250,6 +255,7 @@ def problems_in(output, source_text, terms)
 
   missing_tags = angle_tags(source_text).tally.select { |tag, n| output.scan(tag).length < n }.keys
   problems << "Keep these placeholders: #{missing_tags.join(' ')}" unless missing_tags.empty?
+  problems << "Translate non-Japanese script into Japanese." if output.match?(UNWANTED_SCRIPT)
 
   terms.each do |t|
     next if normalize_ja(output).include?(normalize_ja(t[:target]))
@@ -339,6 +345,10 @@ def translate_with_llm(model, text, upstream = DEFAULT_UPSTREAM)
       log_verbose("skip retry: #{elapsed.round(1)}s elapsed, budget #{CLIENT_BUDGET}s")
       break
     end
+  end
+
+  if best[0].match?(UNWANTED_SCRIPT)
+    raise UpstreamError.new(502, JSON.dump(error: "translation contains Hangul, Thai, or Cyrillic text"))
   end
 
   best
@@ -531,6 +541,8 @@ loop do
       write_response(sock, 200, completion_response(raw_source, "timeout", "length"))
       next
     end
+
+    raise UpstreamError.new(502, JSON.dump(error: "translation contains Hangul, Thai, or Cyrillic text")) if translated.match?(UNWANTED_SCRIPT)
 
     log_brief_translation(source_text, translated, label)
     write_response(sock, 200, completion_response(translated.gsub(/\r?\n/, eol), label))

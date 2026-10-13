@@ -117,13 +117,14 @@ xTranslator は辞書の完全一致だけ、残りは全部このプロキシ�
 
 ## Dictionary
 
-プロキシは SST を直接読まない。`xtranslator_sst_glossary.rb --format jsonl` が書き出した
+プロキシは SST を直接読まない。`xtranslator-llm-proxy-dict` 側の再生成スクリプトが書き出した
 `~/.local/share/xtranslator-llm-proxy/dictionary.jsonl`（1 行 1 件、`source` / `target` / `file`）を読む。
 
 - 書き出し元: `~/.local/bin/_xTranslator/UserDictionaries/SkyrimSE/*_english_japanese.sst` 全部
   - `UserPrefs/SkyrimSE/prefs_vocab_english_japanese.ini` で `name|1` の辞書は除外、並び順が優先順。同じ原文は先勝ち
 - 自動更新: `xtranslator-llm-proxy-dict.path` が SST のディレクトリと ini を監視（`PathChanged`）し、
   変更があれば 2 秒待ってから書き出す。書き出しは一時ファイル経由で差し替えるので、読み込み途中に壊れたファイルは見えない
+- ハングル・タイ文字・キリル文字が混ざった辞書訳は再生成時に除外する。LLM の訳に混ざった場合は再試行し、残ればエラーとして返す。該当する既存キャッシュも再利用しない
 - プロキシの起動時にも 1 回書き出す（ログアウト中の変更を拾う）
 - プロキシはスナップショットの mtime が変わったら、次のリクエストで読み直す（再起動不要）
 - 手動で今すぐ更新: `systemctl --user start xtranslator-llm-proxy-dict`

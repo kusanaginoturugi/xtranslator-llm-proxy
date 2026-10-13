@@ -216,3 +216,19 @@ Handoff:
 - Restart llama.cpp after changing `/etc/llama.cpp/models.ini`.
 - Current recommended xTranslator API batch settings are `OpenAI_CharLimit=2000` and `OpenAI_ArrayLimit=2`.
 - `--brief` logs should show `モデル: translategemma-4B`, `モデル: translategemma-12B`, or `モデル: glossary`.
+
+## 2026-10-13 翻訳への異種文字混入防止
+
+Plan:
+
+- 辞書スナップショットでハングル・タイ文字・キリル文字を除外し、プロキシが返す訳文も検証する。
+
+Record:
+
+- 辞書側で混入訳31件を除外し、常用辞書を91,671件に再生成した。
+- LLM 出力を再試行しても混入が残る場合は502を返す。既存キャッシュの混入訳も再利用しない。サービスを再起動し、模擬上流でハングル混入を返すテストで502を確認した。
+- 元SSTのハングル33行・キリル文字10行は辞書側の一覧に記録した。翻訳済みプラグイン本体は未修正。
+
+Handoff:
+
+- 元SSTと翻訳済みプラグインに残る混入訳は、出典と文脈を確認して個別に修正する。辞書とプロキシの検証だけでは xTranslator が直接使う訳を変更できない。
